@@ -81,6 +81,8 @@ def write2database(data):
     error_code = 0      # holds encode of error in order to select them from table
     error_description = ''
 
+    is_error = False    # holds error emergence
+
     global address      # to check type of tx's (we need only "IN")
 
     for tx in reversed(data['result']):     # reverse in order to iterate descending
@@ -111,16 +113,11 @@ def write2database(data):
             error_code = 2      # Lenght of some col is exceeded a limit
             # single quote to double in order to avoid MySQL ProgrammingError
             error_description = str(e).replace("'", '"')
-            connection.rollback()
 
         except MySQLdb.IntegrityError as e:
             error_code = 1      # Can't write data into table (mostly dublicate)
             # single quote to double in order to avoid MySQL ProgrammingError
             error_description = str(e).replace("'", '"')
-            connection.rollback()
-
-        else:
-            connection.commit()
 
         if error_code and error_description:
             try:
@@ -134,10 +131,12 @@ def write2database(data):
                                            ErrorDescription=error_description)
                 cursor.execute(insert)
             except:
-                connection.rollback()
-                raise
-            else:
-                connection.commit()
+                is_error = True
+
+    if not is_error:
+        connection.commit()
+    else:
+        connection.rollback()
 
     cursor.close()
     connection.close()
