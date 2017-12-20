@@ -58,10 +58,11 @@ def create_insert_templates():
 def check_oldness(dt):
     '''Checks whether or not tx is older than time_to_check'''
     global time_to_check
-    time_to_check = datetime.timedelta(**time_to_check)  # 24 hours or 1 day
+
+    to_check = datetime.timedelta(**time_to_check)
     now = datetime.datetime.now()
 
-    if (now - dt) > time_to_check:      # if tx older than time_to_check
+    if (now - dt) > to_check:      # if tx older than time_to_check
         return True
 
     return False
@@ -183,6 +184,7 @@ if __name__ == '__main__':
     address = config.ADDRESS
 
     time_to_check = config.TIME_TO_CHECK
+    pprint(type(time_to_check))
 
     # tx - transaction
     parse_transactions(address, api_key)
