@@ -184,7 +184,6 @@ if __name__ == '__main__':
     address = config.ADDRESS
 
     time_to_check = config.TIME_TO_CHECK
-    pprint(type(time_to_check))
 
     # tx - transaction
     parse_transactions(address, api_key)
