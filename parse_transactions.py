@@ -100,12 +100,14 @@ def write2database(data):
 
         except MySQLdb.DataError as e:
             error_code = 2      # Lenght of some col is exceeded a limit
-            error_description = str(e)
+            # single quote to double in order to avoid MySQL ProgrammingError
+            error_description = str(e).replace("'", '"')
             connection.rollback()
 
         except MySQLdb.IntegrityError as e:
             error_code = 1      # Can't write data into table (mostly dublicate)
-            error_description = str(e).replace("'", '"')    # single quote to double
+            # single quote to double in order to avoid MySQL ProgrammingError
+            error_description = str(e).replace("'", '"')
             connection.rollback()
 
         else:
