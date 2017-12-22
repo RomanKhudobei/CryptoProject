@@ -78,16 +78,17 @@ def write2database(data):
 
     check_existence(cursor)
 
-    error_code = 0      # holds encode of error in order to select them from table
-    error_description = ''
-
     is_error = False    # holds error emergence
 
     global address      # to check type of tx's (we need only "IN")
+    global log_table_name      # in order to further SELECT statement
 
     for tx in reversed(data['result']):     # reverse in order to iterate descending
         if tx['to'] != address:
             continue
+
+        error_code = 0      # holds encode of error in order to select them from table
+        error_description = ''
 
         # we need datetime object to compare it
         age = convert2datetime( tx['timeStamp'] )
@@ -101,6 +102,8 @@ def write2database(data):
         table_insert, log_insert = create_insert_templates()
 
         try:
+            assert tx['isError'] != '1', 'Unknown Error ("isError" == "1")'
+
             insert = table_insert.format(TxHash=tx['hash'],
                                          Block=tx['blockNumber'],
                                          Age=age,
@@ -115,28 +118,46 @@ def write2database(data):
             error_description = str(e).replace("'", '"')
 
         except MySQLdb.IntegrityError as e:
-            error_code = 1      # Can't write data into table (mostly dublicate)
-            # single quote to double in order to avoid MySQL ProgrammingError
-            error_description = str(e).replace("'", '"')
+            pass
+
+        except AssertionError as e:
+            error_code = 3      # 'isError' == '1', unknown
+            error_description = str(e)
 
         if error_code and error_description:
             try:
-                insert = log_insert.format(TxHash=tx['hash'],
-                                           Block=tx['blockNumber'],
-                                           Age=age,
-                                           TxFrom=tx['from'],
-                                           TxTo=tx['to'],
-                                           Value=tx['value'],
-                                           ErrorCode=error_code,
-                                           ErrorDescription=error_description)
-                cursor.execute(insert)
+                select = """SELECT TxHash, Block, Age, ErrorCode 
+                            FROM {table_name} 
+                            WHERE TxHash = '{TxHash}'
+                            AND Block = '{Block}'
+                            AND Age = '{Age}'
+                            AND ErrorCode = {ErrorCode};
+                         """.format(table_name=log_table_name,
+                                    TxHash=tx['hash'],
+                                    Block=tx['blockNumber'],
+                                    Age=age,
+                                    ErrorCode=error_code)
+
+                cursor.execute(select)
+                data = cursor.fetchone()
+
+                if not data:
+                    insert = log_insert.format(TxHash=tx['hash'],
+                                               Block=tx['blockNumber'],
+                                               Age=age,
+                                               TxFrom=tx['from'],
+                                               TxTo=tx['to'],
+                                               Value=tx['value'],
+                                               ErrorCode=error_code,
+                                               ErrorDescription=error_description)
+                    cursor.execute(insert)
             except:
                 is_error = True
 
-    if not is_error:
-        connection.commit()
-    else:
+    if is_error:
         connection.rollback()
+    else:
+        connection.commit()
 
     cursor.close()
     connection.close()
