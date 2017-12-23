@@ -3,7 +3,6 @@
 import sys
 import json
 import datetime
-from pprint import pprint
 
 import requests
 import MySQLdb
