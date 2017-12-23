@@ -1,6 +1,9 @@
+#!/usr/bin/python2
+
 import sys
 import json
 import datetime
+from pprint import pprint
 
 import requests
 import MySQLdb
@@ -21,35 +24,38 @@ def check_existence(cursor):
     global main_table_name
     cursor.execute("""CREATE TABLE IF NOT EXISTS {} (
                       TxHash VARCHAR(66), 
-                      Block VARCHAR(7), 
+                      Block INT, 
                       Age DATETIME, 
                       TxFrom VARCHAR(42), 
                       TxTo VARCHAR(42), 
                       Value VARCHAR(20),
-                      PRIMARY KEY ( TxHash, Block, Age ));""".format(main_table_name))
+                      PRIMARY KEY ( TxHash, Block, Age ))
+                      DEFAULT CHARSET = utf8;""".format(main_table_name))
 
     global log_table_name
     cursor.execute("""CREATE TABLE IF NOT EXISTS {} (
-                      TxHash TEXT, 
-                      Block TEXT, 
+                      TxHash VARCHAR(100), 
+                      Block INT, 
                       Age DATETIME, 
                       TxFrom TEXT, 
                       TxTo TEXT, 
                       Value TEXT,
                       ErrorCode TINYINT,
-                      ErrorDescription TEXT);""".format(log_table_name))
+                      ErrorDescription TEXT,
+                      INDEX log_index (ErrorCode, Age, Block, TxHash))
+                      DEFAULT CHARSET = utf8;""".format(log_table_name))
 
     cursor.execute('SET sql_notes = 1')     # turning on warnings
 
 def create_insert_templates():
     '''Creates templates of insert command in order to further add data into tables'''
     table_insert_template = """
-        INSERT INTO transactions (TxHash, Block, Age, TxFrom, TxTo, Value)
+        INSERT INTO {table_name} (TxHash, Block, Age, TxFrom, TxTo, Value)
         VALUES ('{TxHash}', '{Block}', '{Age}', '{TxFrom}', '{TxTo}', '{Value}');
     """
 
     log_insert_template = """
-        INSERT INTO log (TxHash, Block, Age, TxFrom, TxTo, Value, ErrorCode, ErrorDescription)
+        INSERT INTO {table_name} (TxHash, Block, Age, TxFrom, TxTo, Value, ErrorCode, ErrorDescription)
         VALUES ('{TxHash}', '{Block}', '{Age}', '{TxFrom}', '{TxTo}', '{Value}', {ErrorCode}, '{ErrorDescription}');
     """
 
@@ -81,6 +87,7 @@ def write2database(data):
     is_error = False    # holds error emergence
 
     global address      # to check type of tx's (we need only "IN")
+    global main_table_name
     global log_table_name      # in order to further SELECT statement
 
     for tx in reversed(data['result']):     # reverse in order to iterate descending
@@ -104,7 +111,8 @@ def write2database(data):
         try:
             assert tx['isError'] != '1', 'Unknown Error ("isError" == "1")'
 
-            insert = table_insert.format(TxHash=tx['hash'],
+            insert = table_insert.format(table_name=main_table_name,
+                                         TxHash=tx['hash'],
                                          Block=tx['blockNumber'],
                                          Age=age,
                                          TxFrom=tx['from'],
@@ -142,7 +150,8 @@ def write2database(data):
                 data = cursor.fetchone()
 
                 if not data:
-                    insert = log_insert.format(TxHash=tx['hash'],
+                    insert = log_insert.format(table_name=log_table_name,
+                                               TxHash=tx['hash'],
                                                Block=tx['blockNumber'],
                                                Age=age,
                                                TxFrom=tx['from'],
