@@ -75,5 +75,4 @@ def get_coin():
 
 if __name__ == '__main__':
 	app.secret_key = config.APP_SECRET_KEY
-	app.debug = True
 	app.run(host=config.APP_HOST, port=config.APP_PORT)
