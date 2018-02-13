@@ -23,8 +23,8 @@ def check_existence(cursor):
 
 def write_coins():
 	connection = MySQLdb.connect(host=config.HOST,
-								 user=config.USER,
-								 passwd=config.PASSWORD)
+				     user=config.USER,
+				     passwd=config.PASSWORD)
 	cursor = connection.cursor()
 
 	assert check_existence(cursor) == True, "There's no database or table to write into"
