@@ -1,4 +1,4 @@
 # CryptoProject
 CryptoProject
 
-![Alt text](/screenshots/first.png?raw=true "Step #1")
+![Step #1](/screenshots/first.png "Step #1")
